@@ -2,21 +2,21 @@ package db
 
 import (
 	"context"
-	"database/sql"
 	"github.com/MrSezon/amb/src/common/schema"
+	"github.com/jackc/pgx/v5"
 	"log"
 )
 
 type PostgresRepository struct {
-	db *sql.DB
+	db *pgx.Conn
 }
 
-func NewPostgres(url string) (*PostgresRepository, error) {
-	db, err := sql.Open("postgres", url)
+func NewPostgres(ctx context.Context, url string) (*PostgresRepository, error) {
+	db, err := pgx.Connect(ctx, url)
 	if err != nil {
 		return nil, err
 	}
-	err = db.Ping()
+	err = db.Ping(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -25,28 +25,23 @@ func NewPostgres(url string) (*PostgresRepository, error) {
 	}, nil
 }
 
-func (r *PostgresRepository) Close() {
-	if err := r.db.Close(); err != nil {
+func (r *PostgresRepository) Close(ctx context.Context) {
+	if err := r.db.Close(ctx); err != nil {
 		log.Fatal(err)
 	}
 }
 
 func (r *PostgresRepository) InsertMessage(ctx context.Context, message schema.Message) error {
-	_, err := r.db.Exec("INSERT INTO messages(id, body, created_at) VALUES($1, $2, $3)", message.Id, message.Body, message.CreatedAt)
+	_, err := r.db.Exec(ctx, "INSERT INTO messages(id, body, created_at) VALUES($1, $2, $3)", message.Id, message.Body, message.CreatedAt)
 	return err
 }
 
 func (r *PostgresRepository) ListMessages(ctx context.Context, skip uint64, take uint64) ([]schema.Message, error) {
-	rows, err := r.db.Query("SELECT id, body, created_at FROM messages ORDER BY id DESC OFFSET $1 LIMIT $2", skip, take)
+	rows, err := r.db.Query(ctx, "SELECT id, body, created_at FROM messages ORDER BY id DESC OFFSET $1 LIMIT $2", skip, take)
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		err = rows.Close()
-		if err != nil {
-			log.Fatal(err)
-		}
-	}()
+	defer rows.Close()
 
 	// Parse all rows into an array of Messages
 	var messages []schema.Message

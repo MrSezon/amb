@@ -6,7 +6,7 @@ import (
 )
 
 type Repository interface {
-	Close()
+	Close(ctx context.Context)
 	InsertMessage(ctx context.Context, message schema.Message) error
 	ListMessages(ctx context.Context, skip uint64, take uint64) ([]schema.Message, error)
 }
@@ -17,8 +17,8 @@ func SetRepository(repository Repository) {
 	impl = repository
 }
 
-func Close() {
-	impl.Close()
+func Close(ctx context.Context) {
+	impl.Close(ctx)
 }
 
 func InsertMessage(ctx context.Context, message schema.Message) error {
